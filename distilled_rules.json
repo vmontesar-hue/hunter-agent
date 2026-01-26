@@ -1,0 +1,55 @@
+{
+  "must_have_criteria": [
+    "Menciona empresa específica con nombre propio",
+    "Acción concreta: M&A, inversión, expansión, nuevo producto, contratación C-level",
+    "Empresa de tamaño corporativo (más de 80M USD facturación o más de 2000 empleados)",
+    "Ubicación geográfica en México, España, Portugal o Latinoamérica",
+    "Indica necesidad clara de innovación, transformación digital o crecimiento estratégico"
+  ],
+  "must_not_have_criteria": [
+    "Artículo de opinión, análisis de tendencias o informe de mercado general",
+    "Ubicación fuera de geografía objetivo (Europa del Este, Medio Oriente, Asia)",
+    "Enfoque exclusivo en problemas sociales o políticos sin componente de negocio",
+    "Proyectos gubernamentales o ministeriales sin clara aplicación corporativa",
+    "Empresa muy pequeña (menos de 50 empleados o startup en etapa muy temprana)"
+  ],
+  "positive_signals": [
+    "Mención explícita de transformación digital o innovación estratégica",
+    "Expansión geográfica a nuevos mercados o países",
+    "Lanzamiento de nueva unidad de negocio o línea de producto",
+    "Inversión significativa de capital o ronda de financiamiento",
+    "Alianza estratégica con impacto en modelo de negocio",
+    "Adopción de tecnologías disruptivas: IA, analytics, plataformas digitales",
+    "Iniciativas de corporate venturing o venture building interno",
+    "Estrategias de descarbonización, economía circular o net-zero"
+  ],
+  "red_flags": [
+    "Conflicto armado, crisis humanitaria o situación de guerra como tema principal",
+    "Noticia sobre regulaciones sin mención de empresa específica afectada",
+    "Artículo sobre estado general del mercado sin protagonista corporativo identificado",
+    "Evento deportivo, cultural o de entretenimiento sin componente de negocio claro",
+    "Tecnología hype o tendencia sin aplicación empresarial concreta mencionada"
+  ],
+  "industry_patterns": [
+    "Fintech: Relevante si expansión de servicios financieros o entrada a nuevos segmentos",
+    "Retail: Relevante si apertura geográfica, transformación digital o nuevo formato",
+    "Energía: Relevante si descarbonización, economía circular o transición energética",
+    "Manufactura: Relevante si automatización, nuevos productos o expansión internacional",
+    "Servicios Financieros: Relevante si nuevos segmentos, digitalización o fideicomisos",
+    "Consumo: Relevante si expansión de marca, nuevos canales o alianzas estratégicas"
+  ],
+  "geographic_rules": [
+    "PRIORIDAD MÁXIMA: México, España, Portugal (mercados core)",
+    "PRIORIDAD ALTA: Chile, Colombia, Perú (expansión LATAM)",
+    "PRIORIDAD MEDIA: Guatemala, Argentina, Ecuador, Panamá, Uruguay",
+    "EVALUAR CASO A CASO: Brasil, USA, Canadá (solo empresas grandes con presencia regional)",
+    "EXCLUIR GENERALMENTE: Europa del Este, Rusia, Medio Oriente, Asia (salvo multinacionales)"
+  ],
+  "metadata": {
+    "total_relevant_examples": 12,
+    "total_irrelevant_examples": 28,
+    "distilled_from": 40,
+    "last_updated": "2025-10-06",
+    "version": "1.0"
+  }
+}

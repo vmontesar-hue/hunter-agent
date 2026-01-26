@@ -1,0 +1,106 @@
+{
+  "search_tiers": {
+    "tier1": "mx,es,pt",
+    "tier2": "cl,co,pe,gt,br"
+  },
+  "data_sources": {
+    "news_api": {
+      "enabled": true
+    },
+    "job_portals": {
+      "enabled": false
+    }
+  },
+  "trigger_lexicon": {
+    "M&A": {
+      "es": [
+        "adquiere",
+        "fusión",
+        "compra participación"
+      ],
+      "en": [
+        "acquires",
+        "merges with",
+        "acquisition"
+      ]
+    },
+    "NewHire": {
+      "es": [
+        "nuevo director",
+        "nueva directora"
+      ],
+      "en": [
+        "new director",
+        "new head of",
+        "chief officer"
+      ]
+    },
+    "Investment": {
+      "es": [
+        "invierte en",
+        "inyecta capital",
+        "recibe inversión"
+      ],
+      "en": [
+        "raises capital",
+        "receives investment"
+      ]
+    },
+    "NewInitiative": {
+      "es": [
+        "corporate venture building",
+        "corporate venturing",
+        "venture builder",
+        "nueva unidad de negocio",
+        "transformación digital",
+        "crecimiento estratégico",
+        "innovación abierta",
+        "centro de innovación",
+        "laboratorio de innovación",
+        "estrategia digital",
+        "alianza estratégica",
+        "lanza nuevo producto",
+        "expansión de mercado"
+      ],
+      "en": [
+        "corporate venture building",
+        "corporate venturing",
+        "venture builder",
+        "new business unit",
+        "digital transformation",
+        "strategic growth",
+        "open innovation",
+        "innovation hub",
+        "innovation lab",
+        "digital strategy",
+        "strategic alliance",
+        "launches new product",
+        "market expansion"
+      ]
+    },
+    "ESG": {
+      "es": [
+        "estrategia de descarbonización",
+        "economía circular",
+        "ESG"
+      ],
+      "en": [
+        "decarbonization strategy",
+        "circular economy",
+        "ESG"
+      ]
+    }
+  },
+  "job_monitoring": {
+    "target_job_titles": [
+      "Head of Innovation",
+      "Director de Innovación",
+      "Chief Digital Officer",
+      "Director de Transformación Digital",
+      "Venture Architect",
+      "Corporate Venturing Lead",
+      "Head of New Ventures",
+      "Director de Nuevos Negocios"
+    ]
+  }
+}
