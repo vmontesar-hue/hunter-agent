@@ -36,29 +36,15 @@ TOTAL_DAILY_LIMIT = sum(m["limit"] for m in MODEL_ROTATION)  # Auto-calculated: 
 # =============================================================================
 
 
-# --- CONTEXTO ESTRATÉGICO DETALLADO DE IGENERIS ---
-IGENERIS_CONTEXT = """
-    - **Modelo:** Somos "constructores", no consultores. Nos implicamos operativamente desde el diseño y la validación hasta el lanzamiento y el escalado de nuevos negocios.
+# --- CONTEXTO ESTRATÉGICO DETALLADO DE COMPANY ---
+COMPANY_CONTEXT = """
+    - **Modelo:**
     - **Ofertas Clave:**
 
-      1.  **Estrategia de Innovación de Negocio:** Abarcamos todo el espectro de la creación de valor y el crecimiento corporativo. Esto incluye:
-          * **Emprendimiento Corporativo y Growth:** Somos expertos en la concepción, validación, lanzamiento y escalado de nuevas iniciativas que generan impacto en la cuenta de resultados del cliente.
-              * **Corporate Venture Building:** Creamos nuevas ventures corporativas desde cero.
-              * **Nuevos Productos y Servicios:** Diseñamos y lanzamos nuevas líneas de ingresos.
-              * **Nuevas Unidades de Negocio:** Ayudamos a estructurar y poner en marcha nuevas áreas de negocio dentro de la corporación.
-          * **Innovación Disruptiva y Estrategia:**
-              * Diseñamos e implementamos marcos estratégicos de innovación.
-              * Ayudamos a crear y operar vehículos de innovación internos (CVB, CVC, Innovación Abierta).
-              * Desarrollamos estrategias Go-To-Market para la penetración en nuevos mercados o segmentos.
-          * **Producto Digital:** Diseñamos y desarrollamos productos y negocios digitales escalables, alineando las soluciones tecnológicas con los objetivos de negocio.
+      1.  **XXX**: YYY
 
-      2.  **Estrategia Basada en el Dato:** Como partner #1 de Palantir en España, transformamos los datos en ventajas competitivas.
-          * Implementamos Palantir Foundry para crear "gemelos digitales".
-          * Aplicamos analítica avanzada e IA para optimizar operaciones y generar predicciones.
-          * Creamos nuevos modelos de negocio basados en la monetización de datos.
-
-    - **Flywheel:** La experiencia en un proyecto (ej. energía con Galp) nos da una ventaja competitiva ("derecho a ganar") en oportunidades similares. Menciona esto si es relevante.
-    - **Perfil de Cliente Ideal (ICP):** Buscamos grandes corporaciones (a partir de 80 millones de dolares de facturación anual - o equivalente en moneda local - o 2000 empleados), a menudo multinacionales, en España, Portugal y América Latina (especialmente México, Perú, Chile, Colombia y Guatemala), que se encuentren en un punto de inflexión. Esto puede ser un 'Líder Consolidado Bajo Presión' (necesita innovar para defenderse) o un 'Líder Ambicioso' (quiere expandirse a nuevos mercados o tecnologías).
+      2.  **ZZZ**: AAA
+    - **Perfil de Cliente Ideal (ICP):** 
 """
 
 # --- FUNCIÓN DE RECOLECCIÓN DE NOTICIAS ---
@@ -183,11 +169,11 @@ def get_combined_analysis_prompt(text_to_analyze, source_type):
             learned_criteria = "\n**EJEMPLOS RELEVANTES:**\n" + "\n".join([f"- {ex['headline']}" for ex in feedback_examples['relevant']])
 
     return f"""
-        Tu rol es actuar como un analista de desarrollo de negocio para Igeneris. 
+        Tu rol es actuar como un analista de desarrollo de negocio para COMPAÑIA. 
         Realiza un análisis COMPLETO (Clasificación + Extracción) del siguiente texto.
         
-        **CONTEXTO SOBRE IGENERIS:**
-        {IGENERIS_CONTEXT}
+        **CONTEXTO SOBRE COMPAÑIA:**
+        {COMPANY_CONTEXT}
 
         **CRITERIOS DE CLASIFICACIÓN:**
         1.  **ACCIÓN CONCRETA:** Debe ser una acción específica (inversión, M&A, lanzamiento, expansión) de una empresa grande (ICP).
@@ -213,7 +199,7 @@ def get_combined_analysis_prompt(text_to_analyze, source_type):
             "is_opportunity": true,
             "company_name": "Nombre de la empresa",
             "opportunity_summary": "Resumen ejecutivo de la acción concreta",
-            "igeneris_fit": "Por qué encaja con Igeneris",
+            "company_fit": "Por qué encaja con COMPAÑIA",
             "proposed_solution": "Hipótesis de solución/servicio",
             "value_proposition": "Propuesta de valor en una frase"
         }}
