@@ -1,7 +1,7 @@
 # Hunter Agent V3
 
 ## Overview
-Hunter Agent V3 is an AI-powered business intelligence agent. It monitors news sources for strategic opportunities (M&A, Investments, New Hires, Innovations) relevant to Igeneris and clusters them by region.
+Hunter Agent V3 is an AI-powered business intelligence agent. It monitors news sources for strategic opportunities (M&A, Investments, New Hires, Innovations) relevant to YOUR COMPANY and clusters them by region.
 
 **Key Features V3:**
 *   **Smart Filter (Naive Bayes)**: Uses a local ML model trained on your feedback to discard 90%+ of irrelevant noise *before* calling the AI.
@@ -44,3 +44,4 @@ The agent is designed to run as two scheduled tasks:
 **Virtual Environment Note:**
 Always use the full path to the virtualenv python executable when creating tasks:
 `/home/YOUR_USER/.virtualenvs/hunter-agent-env/bin/python ...`
+
