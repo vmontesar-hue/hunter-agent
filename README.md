@@ -1,7 +1,7 @@
 # Hunter Agent V3
 
 ## Overview
-Hunter Agent V3 is an AI-powered business intelligence agent designed to monitor, filter, and analyze strategic opportunities for Igeneris. It automates the discovery of M&A, investment, and innovation news across multiple regions.
+Hunter Agent V3 is an AI-powered business intelligence agent designed to monitor, filter, and analyze strategic opportunities for a services firm. It automates the discovery of M&A, investment, and innovation news across multiple regions.
 
 ### How It Works (The Pipeline)
 The agent operates in a 4-stage pipeline designed for efficiency and cost control:
@@ -116,3 +116,4 @@ Customize the agent's behavior without changing code.
 *   `slack_notifier.py`: Handles Slack message formatting.
 *   `deduplicator.py`: Logic to avoid duplicate alerts.
 *   `knowledge_extractor.py`: Helpers for prompt engineering.
+
