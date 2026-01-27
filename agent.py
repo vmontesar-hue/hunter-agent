@@ -9,11 +9,12 @@ from datetime import datetime
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-from database import add_opportunity, get_all_opportunity_urls, get_all_feedback_examples, get_recent_opportunities
+from database import add_opportunity, get_all_opportunity_urls, get_all_feedback_examples, get_recent_opportunities, add_pending_article, add_ai_rejected_article, get_pending_articles, clear_pending_articles
 from slack_notifier import send_slack_notification
 from scrapers import scrape_glassdoor_jobs
 from knowledge_extractor import load_distilled_rules, format_rules_for_prompt
 from deduplicator import is_duplicate_opportunity, extract_key_entities
+from semantic_filter import semantic_pre_filter, add_positive_example, add_negative_example, get_training_stats
 
 load_dotenv()
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
@@ -22,29 +23,41 @@ genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 # API COST CONTROL CONFIG - UPDATE THIS SECTION WHEN MODELS/LIMITS CHANGE
 # =============================================================================
 MODEL_ROTATION = [
-    {"name": "gemini-3-flash-preview",      "limit": 20},  # 5 RPM, 20 RPD
-    {"name": "gemini-2.5-flash-preview",    "limit": 20},  # 5 RPM, 20 RPD
-    {"name": "gemini-2.5-flash",            "limit": 20},  # 5 RPM, 20 RPD
-    {"name": "gemini-2.5-flash-lite-preview", "limit": 20},  # 10 RPM, 20 RPD
-    {"name": "gemini-2.5-flash-lite",       "limit": 20},  # 10 RPM, 20 RPD
-    {"name": "gemini-2.0-flash",            "limit": 20},  # 10 RPM, 20 RPD
-    {"name": "gemini-2.0-flash-lite",       "limit": 20},  # 10 RPM, 20 RPD
+    {"name": "gemini-3-flash-preview",  "limit": 20},  # Works! 5 RPM, 20 RPD
+    {"name": "gemini-2.5-flash",        "limit": 20},  # 5 RPM, 20 RPD
+    {"name": "gemini-2.5-flash-lite",   "limit": 20},  # 10 RPM, 20 RPD
+    {"name": "gemini-2.0-flash",        "limit": 20},  # 10 RPM, 20 RPD
+    {"name": "gemini-2.0-flash-lite",   "limit": 20},  # 10 RPM, 20 RPD
 ]
 RATE_LIMIT_SLEEP = 15  # seconds between API calls (5 RPM = need 12s, using 15s for safety)
 ML_FILTER_THRESHOLD = 0.65  # 65% relevance probability required to pass ML filter
-TOTAL_DAILY_LIMIT = sum(m["limit"] for m in MODEL_ROTATION)  # Auto-calculated: 140
+TOTAL_DAILY_LIMIT = sum(m["limit"] for m in MODEL_ROTATION)  # Auto-calculated: 100
 # =============================================================================
 
 
-# --- CONTEXTO ESTRATÉGICO DETALLADO DE COMPANY ---
-COMPANY_CONTEXT = """
-    - **Modelo:**
+# --- CONTEXTO ESTRATÉGICO DETALLADO DE IGENERIS ---
+IGENERIS_CONTEXT = """
+    - **Modelo:** Somos "constructores", no consultores. Nos implicamos operativamente desde el diseño y la validación hasta el lanzamiento y el escalado de nuevos negocios.
     - **Ofertas Clave:**
 
-      1.  **XXX**: YYY
+      1.  **Estrategia de Innovación de Negocio:** Abarcamos todo el espectro de la creación de valor y el crecimiento corporativo. Esto incluye:
+          * **Emprendimiento Corporativo y Growth:** Somos expertos en la concepción, validación, lanzamiento y escalado de nuevas iniciativas que generan impacto en la cuenta de resultados del cliente.
+              * **Corporate Venture Building:** Creamos nuevas ventures corporativas desde cero.
+              * **Nuevos Productos y Servicios:** Diseñamos y lanzamos nuevas líneas de ingresos.
+              * **Nuevas Unidades de Negocio:** Ayudamos a estructurar y poner en marcha nuevas áreas de negocio dentro de la corporación.
+          * **Innovación Disruptiva y Estrategia:**
+              * Diseñamos e implementamos marcos estratégicos de innovación.
+              * Ayudamos a crear y operar vehículos de innovación internos (CVB, CVC, Innovación Abierta).
+              * Desarrollamos estrategias Go-To-Market para la penetración en nuevos mercados o segmentos.
+          * **Producto Digital:** Diseñamos y desarrollamos productos y negocios digitales escalables, alineando las soluciones tecnológicas con los objetivos de negocio.
 
-      2.  **ZZZ**: AAA
-    - **Perfil de Cliente Ideal (ICP):** 
+      2.  **Estrategia Basada en el Dato:** Como partner #1 de Palantir en España, transformamos los datos en ventajas competitivas.
+          * Implementamos Palantir Foundry para crear "gemelos digitales".
+          * Aplicamos analítica avanzada e IA para optimizar operaciones y generar predicciones.
+          * Creamos nuevos modelos de negocio basados en la monetización de datos.
+
+    - **Flywheel:** La experiencia en un proyecto (ej. energía con Galp) nos da una ventaja competitiva ("derecho a ganar") en oportunidades similares. Menciona esto si es relevante.
+    - **Perfil de Cliente Ideal (ICP):** Buscamos grandes corporaciones (a partir de 80 millones de dolares de facturación anual - o equivalente en moneda local - o 2000 empleados), a menudo multinacionales, en España, Portugal y América Latina (especialmente México, Perú, Chile, Colombia y Guatemala), que se encuentren en un punto de inflexión. Esto puede ser un 'Líder Consolidado Bajo Presión' (necesita innovar para defenderse) o un 'Líder Ambicioso' (quiere expandirse a nuevos mercados o tecnologías).
 """
 
 # --- FUNCIÓN DE RECOLECCIÓN DE NOTICIAS ---
@@ -117,31 +130,32 @@ ml_model = load_ml_model()
 def pre_filter_content(content, config):
     """
     Filtro Híbrido:
-    1. Si hay modelo ML, úsalo para predecir relevancia.
+    1. Intenta primero el filtro semántico (Sentence Transformers)
+    2. Fallback: Naive Bayes si el semántico no está disponible
     """
     if not content:
         return False
     
-    # 1. ML FILTERING (If model exists)
+    # 1. SEMANTIC FILTERING (Primary - uses embeddings with reasons)
+    stats = get_training_stats()
+    if stats['model_loaded'] and (stats['positive_count'] > 0 or stats['negative_count'] > 0):
+        return semantic_pre_filter(content, threshold=ML_FILTER_THRESHOLD)
+    
+    # 2. NAIVE BAYES FALLBACK (If no semantic data yet)
     if ml_model:
         try:
             # Predict probability: [prob_irrelevant, prob_relevant]
-            # Assumes class 1 = relevant, 0 = irrelevant
             proba = ml_model.predict_proba([content])[0]
             prob_relevant = proba[1]
             
-            # Threshold: Uses ML_FILTER_THRESHOLD from config section
             if prob_relevant < ML_FILTER_THRESHOLD: 
-                print(f"  -> ML Filter: REJECTED (Score: {prob_relevant:.2f}, Threshold: {ML_FILTER_THRESHOLD})")
+                print(f"  -> ML Filter (Naive Bayes): REJECTED (Score: {prob_relevant:.2f})")
                 return False
-            else:
-                # If ML says it's possibly relevant, we pass it.
-                pass 
                 
         except Exception as e:
             print(f"  -> ML Prediction Error: {e}")
 
-    # If no ML model or ML says OK, we pass it.
+    # If no model or model approves, pass through
     return True
 
 
@@ -169,11 +183,11 @@ def get_combined_analysis_prompt(text_to_analyze, source_type):
             learned_criteria = "\n**EJEMPLOS RELEVANTES:**\n" + "\n".join([f"- {ex['headline']}" for ex in feedback_examples['relevant']])
 
     return f"""
-        Tu rol es actuar como un analista de desarrollo de negocio para COMPAÑIA. 
+        Tu rol es actuar como un analista de desarrollo de negocio para Igeneris. 
         Realiza un análisis COMPLETO (Clasificación + Extracción) del siguiente texto.
         
-        **CONTEXTO SOBRE COMPAÑIA:**
-        {COMPANY_CONTEXT}
+        **CONTEXTO SOBRE IGENERIS:**
+        {IGENERIS_CONTEXT}
 
         **CRITERIOS DE CLASIFICACIÓN:**
         1.  **ACCIÓN CONCRETA:** Debe ser una acción específica (inversión, M&A, lanzamiento, expansión) de una empresa grande (ICP).
@@ -199,7 +213,7 @@ def get_combined_analysis_prompt(text_to_analyze, source_type):
             "is_opportunity": true,
             "company_name": "Nombre de la empresa",
             "opportunity_summary": "Resumen ejecutivo de la acción concreta",
-            "company_fit": "Por qué encaja con COMPAÑIA",
+            "igeneris_fit": "Por qué encaja con Igeneris",
             "proposed_solution": "Hipótesis de solución/servicio",
             "value_proposition": "Propuesta de valor en una frase"
         }}
@@ -373,6 +387,9 @@ def run_collection_phase(config):
             )
             new_opportunities_count += 1
 
+            # Train semantic filter with this positive example
+            add_positive_example(item.get("content", ""))
+
             # Agregar a recent_opportunities para detectar duplicados en este mismo ciclo
             recent_opportunities.append({
                 'headline': new_headline,
@@ -382,18 +399,38 @@ def run_collection_phase(config):
                 'created_at': datetime.now().isoformat()
             })
         elif analysis_result is None:
-            # API ERROR - Don't count this against our budget, don't discard the article
-            print(f"  -> ERROR API: No se pudo analizar. Se reintentará en el próximo ciclo.", flush=True)
+            # API ERROR - Queue article for retry in next cycle
+            print(f"  -> ERROR API: Guardando para reintentar.", flush=True)
             api_call_counter -= 1  # Refund the call since it failed
+            add_pending_article(
+                url=item["source_url"],
+                headline=item.get("headline", ""),
+                source_type=item["source_type"],
+                country=item.get("country"),
+                content=item.get("content")
+            )
         else:
-            # Actual AI classification: article is not an opportunity
+            # AI rejected - SAVE for ML training with semantic embeddings
             reason = analysis_result.get("reason", "No especificada")
             print(f"  -> IRRELEVANTE (AI). Razón: {reason}", flush=True)
+            add_ai_rejected_article(
+                url=item["source_url"],
+                headline=item.get("headline", ""),
+                source_type=item["source_type"],
+                country=item.get("country"),
+                content=item.get("content"),
+                rejection_reason=reason
+            )
+            # Train semantic filter with this rejection
+            add_negative_example(item.get("content", ""), reason)
 
     print(f"\nFase de recolección finalizada.", flush=True)
     print(f"  -> Nuevas oportunidades: {new_opportunities_count}", flush=True)
     print(f"  -> Duplicados semánticos evitados: {duplicates_found}", flush=True)
     print(f"  -> Llamadas API realizadas: {api_call_counter}/{TOTAL_DAILY_LIMIT}", flush=True)
+    
+    # Clean up pending queue at end of cycle (within-cycle safety net only)
+    clear_pending_articles()
 
 
 if __name__ == '__main__':

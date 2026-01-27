@@ -155,6 +155,84 @@ def mark_as_notified(opp_id):
     conn.commit()
     conn.close()
 
+def add_pending_article(url, headline, source_type, country=None, content=None):
+    """
+    Queue an article that failed API analysis for retry later.
+    Status 'pending' indicates it should be retried in the next cycle.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO opportunities 
+            (source_url, headline, source_type, country, content, status) 
+            VALUES (?, ?, ?, ?, ?, 'pending')
+        """, (url, headline, source_type, country, content))
+        conn.commit()
+        return cursor.lastrowid
+    except sqlite3.IntegrityError:
+        # URL already exists
+        return None
+    finally:
+        conn.close()
+
+def add_ai_rejected_article(url, headline, source_type, country=None, content=None, rejection_reason=None):
+    """
+    Save articles rejected by AI with the rejection reason for ML training.
+    Status 'ai_rejected' is used for semantic filter training.
+    """
+    import json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        analysis_json = json.dumps({"is_opportunity": False, "reason": rejection_reason}) if rejection_reason else None
+        cursor.execute("""
+            INSERT INTO opportunities 
+            (source_url, headline, source_type, country, content, analysis_json, 
+             status, processed_at) 
+            VALUES (?, ?, ?, ?, ?, ?, 'ai_rejected', ?)
+        """, (url, headline, source_type, country, content, analysis_json, datetime.now()))
+        conn.commit()
+        return cursor.lastrowid
+    except sqlite3.IntegrityError:
+        # URL already exists
+        return None
+    finally:
+        conn.close()
+
+def get_pending_articles():
+    """Get all pending articles that need to be retried."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, source_url, headline, source_type, country, content 
+        FROM opportunities 
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {'id': r[0], 'source_url': r[1], 'headline': r[2], 
+         'source_type': r[3], 'country': r[4], 'content': r[5]}
+        for r in rows
+    ]
+
+def clear_pending_articles():
+    """
+    Clear all pending articles at the end of a cycle.
+    Pending queue is a within-cycle safety net, not cross-cycle.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM opportunities WHERE status = 'pending'")
+    deleted = cursor.rowcount
+    conn.commit()
+    conn.close()
+    if deleted > 0:
+        print(f"  -> Cola de pendientes limpiada: {deleted} artículos descartados")
+    return deleted
+
 def get_all_feedback_examples(limit_per_category=10):
     """
     Recupera ejemplos de feedback (relevantes e irrelevantes) limitados y ordenados por recencia.
