@@ -14,7 +14,7 @@ from slack_notifier import send_slack_notification
 from scrapers import scrape_glassdoor_jobs
 from knowledge_extractor import load_distilled_rules, format_rules_for_prompt
 from deduplicator import is_duplicate_opportunity, extract_key_entities
-from semantic_filter import semantic_pre_filter, add_positive_example, add_negative_example, get_training_stats
+from semantic_filter import semantic_pre_filter, add_positive_example, add_negative_example, get_training_stats, batch_filter_articles
 
 load_dotenv()
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
@@ -30,7 +30,7 @@ MODEL_ROTATION = [
     {"name": "gemini-2.0-flash-lite",   "limit": 20},  # 10 RPM, 20 RPD
 ]
 RATE_LIMIT_SLEEP = 15  # seconds between API calls (5 RPM = need 12s, using 15s for safety)
-ML_FILTER_THRESHOLD = 0.65  # 65% relevance probability required to pass ML filter
+ML_FILTER_THRESHOLD = 0.50  # 50% = neutral score (equally similar to pos and neg)
 TOTAL_DAILY_LIMIT = sum(m["limit"] for m in MODEL_ROTATION)  # Auto-calculated: 100
 # =============================================================================
 
@@ -289,6 +289,20 @@ def run_collection_phase(config):
         print("Fase de recolección finalizada. No se encontraron nuevos items para analizar.", flush=True)
         return
 
+    # BATCH FILTER: Score all articles and guarantee min 5 pass
+    MIN_GUARANTEED_PASS = 10
+    print(f"\n📊 Aplicando filtro semántico por lotes (mínimo {MIN_GUARANTEED_PASS} garantizados)...", flush=True)
+    batch_results = batch_filter_articles(all_items_to_process, threshold=ML_FILTER_THRESHOLD, min_pass=MIN_GUARANTEED_PASS)
+    
+    # Create a map of URL -> (passed, explanation) for quick lookup
+    batch_filter_map = {}
+    passed_count = 0
+    for article, score, passed, explanation in batch_results:
+        batch_filter_map[article['source_url']] = (passed, explanation, score)
+        if passed:
+            passed_count += 1
+    print(f"  -> {passed_count} artículos pasan el filtro (de {len(all_items_to_process)} totales)", flush=True)
+
     processed_urls = get_all_opportunity_urls()
     recent_opportunities = get_recent_opportunities(days_back=7)  # Últimos 7 días para deduplicación
     new_opportunities_count = 0
@@ -303,10 +317,15 @@ def run_collection_phase(config):
 
         print(f"\nProcesando: {item['source_url']}", flush=True)
 
-        # LAYER 2: Pre-Filtering (Python Regex) - ZERO COST
-        if not pre_filter_content(item["content"], config):
-            print("  -> RECHAZADO por filtro de palabras clave (Python). Ahorro de token.", flush=True)
-            continue
+        # LAYER 2: Batch Semantic Filter (pre-computed with top-5 guarantee)
+        item_url = item['source_url']
+        if item_url in batch_filter_map:
+            passed, explanation, score = batch_filter_map[item_url]
+            if not passed:
+                print(f"  -> FILTRO SEMÁNTICO: RECHAZADO ({explanation})", flush=True)
+                continue
+            elif 'GARANTIZADO' in explanation:
+                print(f"  -> {explanation}", flush=True)
 
         # LAYER 3: Early Semantic Deduplication (Before AI) - ZERO COST
         # Intentamos detectar duplicados usando el texto crudo. 
@@ -388,7 +407,9 @@ def run_collection_phase(config):
             new_opportunities_count += 1
 
             # Train semantic filter with this positive example
-            add_positive_example(item.get("content", ""))
+            text_for_training = item.get("content") or item.get("headline") or ""
+            if text_for_training:
+                add_positive_example(text_for_training)
 
             # Agregar a recent_opportunities para detectar duplicados en este mismo ciclo
             recent_opportunities.append({
@@ -422,7 +443,9 @@ def run_collection_phase(config):
                 rejection_reason=reason
             )
             # Train semantic filter with this rejection
-            add_negative_example(item.get("content", ""), reason)
+            text_for_training = item.get("content") or item.get("headline") or ""
+            if text_for_training:
+                add_negative_example(text_for_training, reason)
 
     print(f"\nFase de recolección finalizada.", flush=True)
     print(f"  -> Nuevas oportunidades: {new_opportunities_count}", flush=True)

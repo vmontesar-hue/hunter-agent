@@ -12,18 +12,18 @@ def send_slack_notification(analysis_json_str, source_url, country=None):
     
     # Canales por región (Hardcoded según solicitud del usuario)
     CHANNELS = {
-        'es': 'CHANNELID',  # Spain
-        'pt': 'CHANNELID',  # Portugal/Brazil
-        'br': 'CHANNELID',  # Portugal/Brazil
-        'mx': 'CHANNELID',  # Mexico
-        'pe': 'CHANNELID',  # Peru/Chile/Colombia
-        'cl': 'CHANNELID',  # Peru/Chile/Colombia
-        'co': 'CHANNELID',  # Peru/Chile/Colombia
-        'gt': 'CHANNELID',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
-        'ar': 'CHANNELID',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
-        'ec': 'CHANNELID',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
-        'py': 'CHANNELID',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
-        'uy': 'CHANNELID'   # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
+        'es': 'C0A35QRSH8Q',  # Spain
+        'pt': 'C0A2F3BPSUC',  # Portugal/Brazil
+        'br': 'C0A2F3BPSUC',  # Portugal/Brazil
+        'mx': 'C0A29EHE5U6',  # Mexico
+        'pe': 'C0A254D9RQT',  # Peru/Chile/Colombia
+        'cl': 'C0A254D9RQT',  # Peru/Chile/Colombia
+        'co': 'C0A254D9RQT',  # Peru/Chile/Colombia
+        'gt': 'C0A29EXJ8RL',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
+        'ar': 'C0A29EXJ8RL',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
+        'ec': 'C0A29EXJ8RL',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
+        'py': 'C0A29EXJ8RL',  # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
+        'uy': 'C0A29EXJ8RL'   # Guatemala/Argentina/Ecuador/Paraguay/Uruguay
     }
     
     # Mapeo de nombres completos a códigos de 2 letras
@@ -62,17 +62,17 @@ def send_slack_notification(analysis_json_str, source_url, country=None):
         analysis = json.loads(analysis_json_str)
         company_name = analysis.get("company_name", "")
         opportunity_summary = analysis.get("opportunity_summary", "")
-        COMPANY_fit = analysis.get("COMPANY_fit", "")
+        igeneris_fit = analysis.get("igeneris_fit", "")
         proposed_solution = analysis.get("proposed_solution", "")
         value_proposition = analysis.get("value_proposition", "")
         
         # VALIDACIÓN ESTRICTA: Sin estos campos NO se puede crear el formato rico correcto
-        required_values = [company_name, opportunity_summary, COMPANY_fit, proposed_solution, value_proposition]
+        required_values = [company_name, opportunity_summary, igeneris_fit, proposed_solution, value_proposition]
         if not all(required_values):
             missing = []
             if not company_name: missing.append("company_name")
             if not opportunity_summary: missing.append("opportunity_summary")
-            if not COMPANY_fit: missing.append("COMPANY_fit")
+            if not igeneris_fit: missing.append("igeneris_fit")
             if not proposed_solution: missing.append("proposed_solution")
             if not value_proposition: missing.append("value_proposition")
             print(f"Error: Datos incompletos para formato rico. Campos vacíos: {missing}", flush=True)
@@ -109,7 +109,7 @@ def send_slack_notification(analysis_json_str, source_url, country=None):
                 "fields": [
                     {
                         "type": "mrkdwn",
-                        "text": f"🔹 *COMPANY Fit (Nuestro Ángulo):*\n{COMPANY_fit}"
+                        "text": f"🔹 *Igeneris Fit (Nuestro Ángulo):*\n{igeneris_fit}"
                     },
                     {
                         "type": "mrkdwn",
@@ -160,5 +160,4 @@ def send_slack_notification(analysis_json_str, source_url, country=None):
     except Exception as e:
         print(f"Un error inesperado ocurrió en send_slack_notification: {e}", flush=True)
     
-
     return False
